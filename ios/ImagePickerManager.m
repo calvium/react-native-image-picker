@@ -258,6 +258,10 @@ RCT_EXPORT_METHOD(showImagePicker:(NSDictionary *)options callback:(RCTResponseS
         NSURL *imageURL = [info valueForKey:UIImagePickerControllerReferenceURL];
         NSString *mediaType = [info objectForKey:UIImagePickerControllerMediaType];
 
+        NSDictionary *storageOptions = nil;
+        if ([self.options objectForKey:@"storageOptions"] && [[self.options objectForKey:@"storageOptions"] isKindOfClass:[NSDictionary class]]) {
+            storageOptions = [self.options objectForKey:@"storageOptions"];
+        }
 
         NSString *fileName;
         if ([mediaType isEqualToString:(NSString *)kUTTypeImage]) {
@@ -281,9 +285,7 @@ RCT_EXPORT_METHOD(showImagePicker:(NSDictionary *)options callback:(RCTResponseS
         NSString *path = [[NSTemporaryDirectory()stringByStandardizingPath] stringByAppendingPathComponent:fileName];
 
         // If storage options are provided, we use the documents directory which is persisted
-        if ([self.options objectForKey:@"storageOptions"] && [[self.options objectForKey:@"storageOptions"] isKindOfClass:[NSDictionary class]]) {
-            NSDictionary *storageOptions = [self.options objectForKey:@"storageOptions"];
-
+        if (storageOptions) {
             NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
             NSString *documentsDirectory = [paths objectAtIndex:0];
             path = [documentsDirectory stringByAppendingPathComponent:fileName];
@@ -314,6 +316,12 @@ RCT_EXPORT_METHOD(showImagePicker:(NSDictionary *)options callback:(RCTResponseS
             }
             else {
                 image = [info objectForKey:UIImagePickerControllerOriginalImage];
+            }
+
+            //also save original to camera roll if specified.
+            if(self.picker.sourceType == UIImagePickerControllerSourceTypeCamera &&
+               storageOptions && [[storageOptions objectForKey:@"saveOriginalToCameraRoll"] boolValue]) {
+                UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil);
             }
 
             // GIFs break when resized, so we handle them differently
@@ -429,9 +437,7 @@ RCT_EXPORT_METHOD(showImagePicker:(NSDictionary *)options callback:(RCTResponseS
         }
 
         // If storage options are provided, check the skipBackup flag
-        if ([self.options objectForKey:@"storageOptions"] && [[self.options objectForKey:@"storageOptions"] isKindOfClass:[NSDictionary class]]) {
-          NSDictionary *storageOptions = [self.options objectForKey:@"storageOptions"];
-
+        if (storageOptions) {
           if ([[storageOptions objectForKey:@"skipBackup"] boolValue]) {
             [self addSkipBackupAttributeToItemAtPath:path]; // Don't back up the file to iCloud
           }
